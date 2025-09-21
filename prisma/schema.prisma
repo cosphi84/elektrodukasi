@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+ 
+model User {
+  id            String          @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String          @unique
+  password      String?
+  emailVerified Boolean?       @default(true)
+  image         String?
+  bio           String?
+  role          String          @default("AUTHOR")
+  phone         String?
+  accounts      Account[]
+  sessions      Session[] 
+  Authenticator Authenticator[]
+  post          Post[]
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  userId            String    @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([provider, providerAccountId])
+}
+ 
+model Session {
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+ 
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+ 
+  @@id([identifier, token])
+}
+ 
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @unique
+  userId               String  @db.Uuid
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([userId, credentialID])
+}
+
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  posts     Post[]   @relation()
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  ip        String
+  content   String
+  postId    String    @db.Uuid
+  post      Post      @relation(fields: [postId], references: [id])
+  parentId  String    @db.Uuid
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  rgt       Int
+  lft       Int
+  depth     Int
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id          String      @id @default(uuid()) @db.Uuid
+  slug        String      @unique
+  title       String
+  cover       String?
+  keywords    String?
+  description String?
+  content     String 
+  categoryId    Int
+  category    Category  @relation(fields: [categoryId], references: [id])
+  published   Boolean   @default(false)
+  authorId    String    @db.Uuid 
+  author      User      @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  views       Int       @default(0)
+  likes       Int       @default(0)
+  isFeatured  Boolean   @default(false)
+  postTags    PostTag[] // hubungan ke pivot table
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  postTags  PostTag[] // hubungan ke pivot table
+}
+
+model PostTag {
+  postId String     @db.Uuid
+  tagId  Int
+  post   Post @relation(fields: [postId], references: [id])
+  tag    Tag  @relation(fields: [tagId], references: [id])
+  @@id([postId, tagId])
+}
